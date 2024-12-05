@@ -1,3 +1,3 @@
-module github.com/oussamm/alkeepy
+module github.com/lubbyte/alkeepy
 
-go 1.22.5
+go 1.23.3
