@@ -1,0 +1,51 @@
+version: 2.1
+
+jobs:
+  build-test-check:
+    docker:
+      - image: cimg/go:1.23.6
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
+      - run:
+          name: Install Dependencies
+          command: go mod download
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - run:
+          name: Create a temp directory for artifacts
+          command: |
+            mkdir -p /tmp/artifacts
+            mkdir -p /tmp/test_results
+      - run:
+          name: Run tests
+          command: |
+            gotestsum --junitfile /tmp/test-results/unit-tests.xml \
+            -- -coverprofile=/tmp/coverage.out ./...
+      - run:
+          name: Generate HTML coverage report
+          command: go tool cover -html=/tmp/coverage.out -o /tmp/artifacts/coverage.html
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/artifacts
+      - run:
+          name: Run vet
+          command: CGO_ENABLED=0 go vet ./...
+      - run:
+          name: Run staticcheck
+          command: |
+            go run honnef.co/go/tools/cmd/staticcheck@latest -checks=all ./...
+      - run:
+          name: Run govulncheck
+          command: |
+            go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+workflows:
+  build:
+    jobs:
+      - build-test-check
